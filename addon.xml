@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.nlziet"
+version="1.1"
+name="NLZIET"
+provider-name="iamdev">
+<requires>
+  <import addon="xbmc.python" version="2.25.0"/>
+  <import addon="script.module.inputstreamhelper" version="0.4.2"/>
+  <import addon="script.module.requests" version="2.9.1"/>
+  <import addon="script.module.requests_oauthlib" version="0.7.0"/>
+</requires>
+<extension point="xbmc.python.pluginsource" library="main.py">
+  <provides>video</provides>
+</extension>
+<extension point="xbmc.addon.metadata">
+  <language>nl</language>
+  <summary lang="en">NLZIET Live TV</summary>
+  <summary lang="nl">NLZIET Live TV</summary>
+  <description lang="en">Watch Live TV from NLZIET.</description>
+  <description lang="nl">Bekijk Live TV van NLZIET.</description>
+  <assets>
+    <icon>icon.jpg</icon>
+  </assets>
+</extension>
+</addon>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <category label="Accountgegevens">
+        <setting label="E-mailadres" type="text" id="email" default=""/>
+        <setting label="Wachtwoord" type="text" id="password" option="hidden" default=""/>
+    </category>
+</settings>
