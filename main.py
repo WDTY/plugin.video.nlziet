@@ -167,7 +167,7 @@ def play(channel):
         playitem.setProperty('inputstreamaddon', is_helper.inputstream_addon)
         playitem.setProperty('inputstream.adaptive.manifest_type', PROTOCOL)
         playitem.setProperty('inputstream.adaptive.license_type', DRM)
-        playitem.setProperty('inputstream.adaptive.license_key', stream['drmConfig']['widevine']['drmServerUrl'] + '||R{SSM}|')
+        playitem.setProperty('inputstream.adaptive.license_key', stream['drmConfig']['widevine']['drmServerUrl'] + '|Content-Type=&User-Agent=Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3041.0 Safari/537.36|R{SSM}|')
         xbmcplugin.setResolvedUrl(_handle, True, listitem=playitem)
 
 def show_dialog(text):
