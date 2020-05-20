@@ -8,5 +8,14 @@ This plugin makes it possible to watch live television provided by NLZIET in Kod
 ![Preview 1](preview/1.jpg)
 ![Preview 2](preview/2.jpg)
 
+## Installation
+1. [Download](https://github.com/iamdevnl/plugin.video.nlziet/archive/master.zip) this addon (ZIP).
+2. Go to Add-ons -> Install from zip file.
+3. Locate the ZIP file you just downloaded.
+4. Go to Add-ons -> My add-ons.
+5. Go to Video add-ons and click on NLZIET.
+6. Enter your NLZIET credentials and click on OK.
+7. Click on Open and choose your favourite TV channel.
+
 ## Licence
 Licenced under The MIT License.
