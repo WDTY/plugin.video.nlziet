@@ -241,7 +241,8 @@ def router(paramstring):
         else:
             raise ValueError('Invalid paramstring: {0}!'.format(paramstring))
     else:
-        list_channels()
+        list_watchlater()
+        # list_channels()
 
 if __name__ == '__main__':
     # Check if user has configured its credentials
