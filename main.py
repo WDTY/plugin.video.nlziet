@@ -5,6 +5,9 @@ import xbmc, xbmcgui, xbmcplugin, xbmcaddon
 import inputstreamhelper
 from requests_oauthlib import OAuth1Session
 
+# NLZiet API and OAuth docs
+# https://github.com/Wouter0100/nlziet-api/blob/master/README.md
+
 # Specify DRM settings
 PROTOCOL = 'mpd'
 DRM = 'com.widevine.alpha'
@@ -16,12 +19,14 @@ KEY_TOKEN = '{{TOKEN}}'
 
 # Define requestable urls
 CHANNEL_LIST_URL = 'https://api.nlziet.nl/v6/epg/channels'
+USER_PLAYLISTS_URL = 'http://api.nlziet.nl/v6/userplaylists'
 STREAM_URL = 'https://api.nlziet.nl/v6/stream/handshake/Widevine/dash/Live/'+KEY_CHANNEL+'?playerName=NLZIET%20Meister%20Player%20Web'
 LOGIN_URL = "https://www.nlziet.nl/Account/AppLogin"
 AUTHORIZE_URL = "https://www.nlziet.nl/OAuth/Authorize?oauth_token="+KEY_TOKEN
 REQUEST_TOKEN_URL = 'https://www.nlziet.nl/OAuth/GetRequestToken'
 ACCESS_TOKEN_URL = "http://www.nlziet.nl/OAuth/GetAccessToken"
 CHANNEL_LOGO_URL = 'https://nlzietprodstorage.blob.core.windows.net/static/channel-logos/'+KEY_CHANNEL+'.png'
+
 
 # Define some OAuth settings
 OAUTH_CONSUMER_KEY = 'key'
@@ -111,6 +116,14 @@ def get_channels():
     """
     return session.get(CHANNEL_LIST_URL).json()
 
+def get_user_playlists():
+    """
+    Get list of user playlists.
+    :return: List of playlists
+    :rtype: types.GeneratorType
+    """
+    return session.get(USER_PLAYLISTS_URL).json()
+
 def get_url(**kwargs):
     """
     Create a URL for calling the plugin recursively from the given set of keyword arguments.
@@ -147,6 +160,40 @@ def list_channels():
 
         # Create a URL for a plugin recursive call.
         url = get_url(action='play', channel=channel['UrlFriendlyName'])
+
+        # Add our item to the Kodi virtual folder listing.
+        xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
+
+    # Finish creating a virtual folder.
+    xbmcplugin.endOfDirectory(_handle)
+
+def list_watchlater():
+    """
+    Create list of playlist items in the Kodi interface.
+    """
+    # Set plugin content.
+    xbmcplugin.setContent(_handle, 'watchlater')
+
+    # Get userplaylists, select watchlater list
+    playlists = get_user_playlists()
+    watchlaterList = playlists[0]
+
+    # Iterate through watchlater items.
+    for playlistitem in watchlaterList['Items']:
+        # Create a list item with a text label and a thumbnail image.
+        list_item = xbmcgui.ListItem(label=playlistitem['Title'])
+
+        # Set graphics
+        list_item.setArt({'icon': playlistitem['ProgrammaAfbeelding']})
+
+        # Set additional info for the list item.
+        list_item.setInfo('video', {'title': playlistitem['ProgrammaTitel'], 'mediatype': 'video'})
+
+        # Set 'IsPlayable' property to 'true'.
+        list_item.setProperty('IsPlayable', 'true')
+
+        # Create a URL for a plugin recursive call.
+        url = get_url(action='play', channel=playlistitem['ScupDeeplink'])
 
         # Add our item to the Kodi virtual folder listing.
         xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
