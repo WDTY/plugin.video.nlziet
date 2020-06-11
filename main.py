@@ -1,4 +1,5 @@
 import sys
+import json
 from urlparse import parse_qsl
 from urllib import urlencode
 import xbmc, xbmcgui, xbmcplugin, xbmcaddon
@@ -15,12 +16,14 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, li
 
 # Define keys
 KEY_CHANNEL = '{{CHANNEL}}'
+KEY_VOD = '{{VOD}}'
 KEY_TOKEN = '{{TOKEN}}'
 
 # Define requestable urls
 CHANNEL_LIST_URL = 'https://api.nlziet.nl/v6/epg/channels'
 USER_PLAYLISTS_URL = 'http://api.nlziet.nl/v6/userplaylists'
-STREAM_URL = 'https://api.nlziet.nl/v6/stream/handshake/Widevine/dash/Live/'+KEY_CHANNEL+'?playerName=NLZIET%20Meister%20Player%20Web'
+CHANNEL_STREAM_URL = 'https://api.nlziet.nl/v6/stream/handshake/Widevine/dash/Live/'+KEY_CHANNEL+'?playerName=NLZIET%20Meister%20Player%20Web'
+VOD_STREAM_URL = 'https://api.nlziet.nl/v6/stream/handshake/Widevine/dash/VOD/'+KEY_VOD+'?playerName=NLZIET%20Meister%20Player%20Web'
 LOGIN_URL = "https://www.nlziet.nl/Account/AppLogin"
 AUTHORIZE_URL = "https://www.nlziet.nl/OAuth/Authorize?oauth_token="+KEY_TOKEN
 REQUEST_TOKEN_URL = 'https://www.nlziet.nl/OAuth/GetRequestToken'
@@ -98,7 +101,7 @@ def login(credentials):
     except:
         show_dialog(ALERT_LOGIN_ERROR)
 
-def get_stream(channel):
+def get_channel_stream(channel):
     """
     Get stream by channel name
     :param channel: URL friendly channel name
@@ -106,8 +109,18 @@ def get_stream(channel):
     :return: Stream information
     :rtype: types.GeneratorType
     """
-    return session.get(STREAM_URL.replace(KEY_CHANNEL, channel)).json()
+    return session.get(CHANNEL_STREAM_URL.replace(KEY_CHANNEL, channel)).json()
 
+def get_vod_stream(vod):
+    """
+    Get stream by vod item name
+    :param channel: URL friendly channel name
+    :type channel: str
+    :return: Stream information
+    :rtype: types.GeneratorType
+    """
+    return session.get(VOD_STREAM_URL.replace(KEY_VOD, vod)).json()
+   
 def get_channels():
     """
     Get list of channels.
@@ -123,6 +136,14 @@ def get_user_playlists():
     :rtype: types.GeneratorType
     """
     return session.get(USER_PLAYLISTS_URL).json()
+
+def get_user_playlist(playlist_id):
+    """
+    Get list of user playlists.
+    :return: List of playlists
+    :rtype: types.GeneratorType
+    """
+    return session.get(USER_PLAYLISTS_URL + '/' + str(playlist_id)).json()
 
 def get_url(**kwargs):
     """
@@ -143,7 +164,7 @@ def list_channels():
 
     # Get channels
     channels = get_channels()
-
+   
     # Iterate through channels.
     for channel in channels:
         # Create a list item with a text label and a thumbnail image.
@@ -175,16 +196,22 @@ def list_watchlater():
     xbmcplugin.setContent(_handle, 'watchlater')
 
     # Get userplaylists, select watchlater list
+    #  user playlists: [{"Type": "WatchLater", "Id": 1, "Title": "Favorites"}, {"Type": "Watched", "Id": 2, "Title": "Bekeken"}]
     playlists = get_user_playlists()
-    watchlaterList = playlists[0]
-
+    #xbmc.log(json.dumps(playlists))
+    
+    # Todo: Fix the const array position
+    watchlaterList = get_user_playlist(playlists[0]['Id'])
+    #xbmc.log(json.dumps(watchlaterList))
+    
     # Iterate through watchlater items.
     for playlistitem in watchlaterList['Items']:
         # Create a list item with a text label and a thumbnail image.
-        list_item = xbmcgui.ListItem(label=playlistitem['Title'])
+        list_item = xbmcgui.ListItem(label=playlistitem['ProgrammaTitel']+ ' ' +playlistitem['AfleveringTitel'])
 
         # Set graphics
-        list_item.setArt({'icon': playlistitem['ProgrammaAfbeelding']})
+        # Todo: define correct thumbnail url
+        list_item.setArt({'icon': 'https://nlzietprodstorage.blob.core.windows.net/'+ playlistitem['ProgrammaAfbeelding']})
 
         # Set additional info for the list item.
         list_item.setInfo('video', {'title': playlistitem['ProgrammaTitel'], 'mediatype': 'video'})
@@ -193,7 +220,7 @@ def list_watchlater():
         list_item.setProperty('IsPlayable', 'true')
 
         # Create a URL for a plugin recursive call.
-        url = get_url(action='play', channel=playlistitem['ScupDeeplink'])
+        url = get_url(action='playvod', vod=playlistitem['ContentId'])
 
         # Add our item to the Kodi virtual folder listing.
         xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
@@ -207,8 +234,25 @@ def play(channel):
     :param channel: URL friendly channel name
     :type channel: str
     """
-    stream = get_stream(channel)
+    stream = get_channel_stream(channel)
 
+    is_helper = inputstreamhelper.Helper(PROTOCOL, drm=DRM)
+    if is_helper.check_inputstream():
+        playitem = xbmcgui.ListItem(path=stream['uri'])
+        playitem.setProperty('inputstreamaddon', is_helper.inputstream_addon)
+        playitem.setProperty('inputstream.adaptive.manifest_type', PROTOCOL)
+        playitem.setProperty('inputstream.adaptive.license_type', DRM)
+        playitem.setProperty('inputstream.adaptive.license_key', stream['drmConfig']['widevine']['drmServerUrl'] + '|Content-Type=&User-Agent='+USER_AGENT+'|R{SSM}|')
+        xbmcplugin.setResolvedUrl(_handle, True, listitem=playitem)
+
+def play_vod(vod):
+    """
+    Play vod item by the provided name.
+    :param channel: URL friendly vod item name
+    :type channel: str
+    """
+    stream = get_vod_stream(vod)
+   
     is_helper = inputstreamhelper.Helper(PROTOCOL, drm=DRM)
     if is_helper.check_inputstream():
         playitem = xbmcgui.ListItem(path=stream['uri'])
@@ -238,11 +282,13 @@ def router(paramstring):
     if params:
         if params['action'] == 'play':
             play(params['channel'])
+        if params['action'] == 'playvod':
+            play_vod(params['vod'])
         else:
             raise ValueError('Invalid paramstring: {0}!'.format(paramstring))
     else:
         list_watchlater()
-        # list_channels()
+        #list_channels()
 
 if __name__ == '__main__':
     # Check if user has configured its credentials
