@@ -155,6 +155,22 @@ def get_url(**kwargs):
     """
     return '{0}?{1}'.format(_url, urlencode(kwargs))
 
+<<<<<<< Updated upstream
+=======
+def main_menu():
+    url = get_url(action='menu', menu_item='live')
+    li = xbmcgui.ListItem('Live', iconImage='DefaultVideo.png')
+    xbmcplugin.addDirectoryItem(handle=_handle, url=url,
+                                listitem=li, isFolder=True)
+
+    url = get_url(action='menu', menu_item='favourites')
+    li = xbmcgui.ListItem('Favorieten', iconImage='DefaultFolder.png')
+    xbmcplugin.addDirectoryItem(handle=_handle, url=url,
+                                listitem=li, isFolder=True)
+    
+    xbmcplugin.endOfDirectory(_handle)
+
+>>>>>>> Stashed changes
 def list_channels():
     """
     Create list of channels in the Kodi interface.
@@ -214,7 +230,9 @@ def list_watchlater():
         list_item.setArt({'icon': 'https://nlzietprodstorage.blob.core.windows.net/'+ playlistitem['ProgrammaAfbeelding']})
 
         # Set additional info for the list item.
-        list_item.setInfo('video', {'title': playlistitem['ProgrammaTitel'], 'mediatype': 'video'})
+        list_item.setInfo('video', {'title': playlistitem['ProgrammaTitel'], 
+                                    'mediatype': 'video', 
+                                    'comment':playlistitem['ProgrammaOmschrijving']})
 
         # Set 'IsPlayable' property to 'true'.
         list_item.setProperty('IsPlayable', 'true')
