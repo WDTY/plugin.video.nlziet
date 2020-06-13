@@ -29,6 +29,7 @@ AUTHORIZE_URL = "https://www.nlziet.nl/OAuth/Authorize?oauth_token="+KEY_TOKEN
 REQUEST_TOKEN_URL = 'https://www.nlziet.nl/OAuth/GetRequestToken'
 ACCESS_TOKEN_URL = "http://www.nlziet.nl/OAuth/GetAccessToken"
 CHANNEL_LOGO_URL = 'https://nlzietprodstorage.blob.core.windows.net/static/channel-logos/'+KEY_CHANNEL+'.png'
+VOD_LOGO_URL = 'https://nlzietprodstorage.blob.core.windows.net/'
 
 
 # Define some OAuth settings
@@ -155,8 +156,6 @@ def get_url(**kwargs):
     """
     return '{0}?{1}'.format(_url, urlencode(kwargs))
 
-<<<<<<< Updated upstream
-=======
 def main_menu():
     url = get_url(action='menu', menu_item='live')
     li = xbmcgui.ListItem('Live', iconImage='DefaultVideo.png')
@@ -164,13 +163,12 @@ def main_menu():
                                 listitem=li, isFolder=True)
 
     url = get_url(action='menu', menu_item='favourites')
-    li = xbmcgui.ListItem('Favorieten', iconImage='DefaultFolder.png')
+    li = xbmcgui.ListItem('Mijn Favorieten', iconImage='DefaultFolder.png')
     xbmcplugin.addDirectoryItem(handle=_handle, url=url,
                                 listitem=li, isFolder=True)
     
     xbmcplugin.endOfDirectory(_handle)
 
->>>>>>> Stashed changes
 def list_channels():
     """
     Create list of channels in the Kodi interface.
@@ -226,13 +224,12 @@ def list_watchlater():
         list_item = xbmcgui.ListItem(label=playlistitem['ProgrammaTitel']+ ' ' +playlistitem['AfleveringTitel'])
 
         # Set graphics
-        # Todo: define correct thumbnail url
-        list_item.setArt({'icon': 'https://nlzietprodstorage.blob.core.windows.net/'+ playlistitem['ProgrammaAfbeelding']})
+        # fix: API reports incorrect image path /thumbnail/[image.jpg] this should be /thumbnails/[image.jpg]
+        fixedLogoUrl = playlistitem['ProgrammaAfbeelding'].replace('thumbnail','thumbnails')
+        list_item.setArt({'icon': VOD_LOGO_URL + fixedLogoUrl})
 
         # Set additional info for the list item.
-        list_item.setInfo('video', {'title': playlistitem['ProgrammaTitel'], 
-                                    'mediatype': 'video', 
-                                    'comment':playlistitem['ProgrammaOmschrijving']})
+        list_item.setInfo('video', {'title': playlistitem['ProgrammaTitel'], 'mediatype': 'video'})
 
         # Set 'IsPlayable' property to 'true'.
         list_item.setProperty('IsPlayable', 'true')
@@ -302,10 +299,16 @@ def router(paramstring):
             play(params['channel'])
         if params['action'] == 'playvod':
             play_vod(params['vod'])
+        if params['action'] == 'menu':
+            if params['menu_item'] == 'live':
+                list_channels()
+            if params['menu_item'] == 'favourites':
+                list_watchlater()
         else:
             raise ValueError('Invalid paramstring: {0}!'.format(paramstring))
     else:
-        list_watchlater()
+        main_menu()
+        #list_watchlater()
         #list_channels()
 
 if __name__ == '__main__':
