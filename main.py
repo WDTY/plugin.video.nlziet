@@ -155,6 +155,19 @@ def get_url(**kwargs):
     """
     return '{0}?{1}'.format(_url, urlencode(kwargs))
 
+def main_menu():
+    url = get_url(action='menu', menu_item='live')
+    li = xbmcgui.ListItem('Live', iconImage='DefaultFolder.png')
+    xbmcplugin.addDirectoryItem(handle=_handle, url=url,
+                                listitem=li, isFolder=True)
+
+    url = get_url(action='menu', menu_item='favourites')
+    li = xbmcgui.ListItem('Favorieten', iconImage='DefaultFolder.png')
+    xbmcplugin.addDirectoryItem(handle=_handle, url=url,
+                                listitem=li, isFolder=True)
+    
+    xbmcplugin.endOfDirectory(_handle)
+
 def list_channels():
     """
     Create list of channels in the Kodi interface.
@@ -284,10 +297,16 @@ def router(paramstring):
             play(params['channel'])
         if params['action'] == 'playvod':
             play_vod(params['vod'])
+        if params['action'] == 'menu':
+            if params['menu_item'] == 'live':
+                list_channels()
+            if params['menu_item'] == 'favourites':
+                list_watchlater()
         else:
             raise ValueError('Invalid paramstring: {0}!'.format(paramstring))
     else:
-        list_watchlater()
+        main_menu()
+        #list_watchlater()
         #list_channels()
 
 if __name__ == '__main__':
