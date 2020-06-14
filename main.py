@@ -1,5 +1,6 @@
 import sys
 import json
+import os
 from urlparse import parse_qsl
 from urllib import urlencode
 import xbmc, xbmcgui, xbmcplugin, xbmcaddon
@@ -22,6 +23,7 @@ KEY_TOKEN = '{{TOKEN}}'
 # Define requestable urls
 CHANNEL_LIST_URL = 'https://api.nlziet.nl/v6/epg/channels'
 USER_PLAYLISTS_URL = 'http://api.nlziet.nl/v6/userplaylists'
+USER_FAVOURITES_SERIES_URL = 'https://api.nlziet.nl/v6/favorites/series'
 CHANNEL_STREAM_URL = 'https://api.nlziet.nl/v6/stream/handshake/Widevine/dash/Live/'+KEY_CHANNEL+'?playerName=NLZIET%20Meister%20Player%20Web'
 VOD_STREAM_URL = 'https://api.nlziet.nl/v6/stream/handshake/Widevine/dash/VOD/'+KEY_VOD+'?playerName=NLZIET%20Meister%20Player%20Web'
 LOGIN_URL = "https://www.nlziet.nl/Account/AppLogin"
@@ -101,6 +103,20 @@ def login(credentials):
         set_logged_in()
     except:
         show_dialog(ALERT_LOGIN_ERROR)
+    
+def write_serie_epsiodes_to_filecache(episodes):
+    script_dir = os.path.dirname(__file__)
+    cacheFile =os.path.join(script_dir,'resources/data/favourite_episodes.json')
+    with open(cacheFile, 'w') as f:
+        json.dump(episodes, f)
+
+def get_serie_epsiodes_from_filecache():
+    script_dir = os.path.dirname(__file__)
+    cacheFile = os.path.join(script_dir,'resources/data/favourite_episodes.json')
+    with open(cacheFile) as data_file:
+        data_loaded = json.load(data_file)
+    return data_loaded
+
 
 def get_channel_stream(channel):
     """
@@ -146,6 +162,14 @@ def get_user_playlist(playlist_id):
     """
     return session.get(USER_PLAYLISTS_URL + '/' + str(playlist_id)).json()
 
+def get_user_favourites_series():
+    """
+    Get list of channels.
+    :return: List of channels
+    :rtype: types.GeneratorType
+    """
+    return session.get(USER_FAVOURITES_SERIES_URL).json()
+
 def get_url(**kwargs):
     """
     Create a URL for calling the plugin recursively from the given set of keyword arguments.
@@ -157,6 +181,8 @@ def get_url(**kwargs):
     return '{0}?{1}'.format(_url, urlencode(kwargs))
 
 def main_menu():
+    xbmcplugin.setContent(_handle, 'NLZiet')
+
     url = get_url(action='menu', menu_item='live')
     li = xbmcgui.ListItem('Live', iconImage='DefaultVideo.png')
     xbmcplugin.addDirectoryItem(handle=_handle, url=url,
@@ -164,6 +190,21 @@ def main_menu():
 
     url = get_url(action='menu', menu_item='favourites')
     li = xbmcgui.ListItem('Mijn Favorieten', iconImage='DefaultFolder.png')
+    xbmcplugin.addDirectoryItem(handle=_handle, url=url,
+                                listitem=li, isFolder=True)
+     
+    xbmcplugin.endOfDirectory(_handle)
+
+def favourites_menu():
+    xbmcplugin.setContent(_handle, 'Favorieten')
+
+    url = get_url(action='menu', menu_item='favourites_watchlater')
+    li = xbmcgui.ListItem('Uitzendingen', iconImage='DefaultFolder.png')
+    xbmcplugin.addDirectoryItem(handle=_handle, url=url,
+                                listitem=li, isFolder=True)
+    
+    url = get_url(action='menu', menu_item='favourites_series')
+    li = xbmcgui.ListItem('Series', iconImage='DefaultFolder.png')
     xbmcplugin.addDirectoryItem(handle=_handle, url=url,
                                 listitem=li, isFolder=True)
     
@@ -202,7 +243,7 @@ def list_channels():
     # Finish creating a virtual folder.
     xbmcplugin.endOfDirectory(_handle)
 
-def list_watchlater():
+def list_favourites_watchlater():
     """
     Create list of playlist items in the Kodi interface.
     """
@@ -236,6 +277,101 @@ def list_watchlater():
 
         # Create a URL for a plugin recursive call.
         url = get_url(action='playvod', vod=playlistitem['ContentId'])
+
+        # Add our item to the Kodi virtual folder listing.
+        xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
+
+    # Finish creating a virtual folder.
+    xbmcplugin.endOfDirectory(_handle)
+
+def list_favourites_series():
+    """
+    Create list of playlist items in the Kodi interface.
+    """
+    xbmcplugin.setContent(_handle, 'Favourite Series')
+    favouriteSeries = get_user_favourites_series()
+    episodes = list()
+
+    # Iterate through watchlater items.
+    for serie in favouriteSeries:
+        # Create a list item with a text label and a thumbnail image.
+        list_item = xbmcgui.ListItem(label=serie['Titel'])
+
+        # Set graphics
+        # fix: API reports incorrect image path /thumbnail/[image.jpg] this should be /thumbnails/[image.jpg]
+        fixedLogoUrl = serie['ProgrammaAfbeelding'].replace('thumbnail','thumbnails')
+        list_item.setArt({'icon': VOD_LOGO_URL + fixedLogoUrl})
+
+        # Set additional info for the list item.
+        list_item.setInfo('video', {'title': serie['Titel'], 'mediatype': 'video'})
+
+        # Set 'IsPlayable' property to 'true'.
+        list_item.setProperty('IsPlayable', 'false')
+
+        xbmc.log(json.dumps(serie))
+        
+        #create custom episodes dictionary
+        for nlZietEpisode in serie['Items']:
+            episode = {
+                'contentId': nlZietEpisode['ContentId'],
+                'title': nlZietEpisode['ProgrammaTitel'].encode("utf-8"),
+                'tvshowtitle': nlZietEpisode['AfleveringTitel'].encode("utf-8"),
+                'season': nlZietEpisode['SeizoenVolgnummer'],
+                'premiered': nlZietEpisode['Uitzenddatum'].encode("utf-8"),
+                'duration': nlZietEpisode['Duur'],
+                # fix: API reports incorrect image path /thumbnail/[image.jpg] this should be /thumbnails/[image.jpg]
+                'icon' :  nlZietEpisode['ProgrammaAfbeelding'].replace('thumbnail','thumbnails')
+                }
+            episodes.append(episode)
+
+        write_serie_epsiodes_to_filecache(episodes)
+             
+        # Create a URL for a plugin recursive call.
+        url = get_url(action='menu', menu_item='favourites_series_list_episodes',serietitle=episode['title'])
+
+        # Add our item to the Kodi virtual folder listing.
+        xbmcplugin.addDirectoryItem(handle=_handle, url=url, listitem=list_item, isFolder=True)
+
+    # Finish creating a virtual folder.
+
+    xbmcplugin.endOfDirectory(_handle)
+    xbmc.log("end of fav series - HANDLE IS:" + str(_handle))
+
+def list_serie(serieTitle):
+    """
+    Create list of episodes in the Kodi interface.
+    """
+    # Set plugin content.
+    xbmcplugin.setContent(_handle, 'tvshows')
+    
+    episodes = get_serie_epsiodes_from_filecache()
+    
+    # Iterate through episodes.
+    for episode in episodes:
+        if episode['title'] != serieTitle:
+            continue
+        xbmc.log("Serie found: " + serieTitle)
+        # Create a list item with a text label and a thumbnail image.
+        list_item = xbmcgui.ListItem(label=episode['title'])
+
+        # Set graphics
+        list_item.setArt({'icon': VOD_LOGO_URL + episode['icon']})
+
+        # Set additional info for the list item.
+        list_item.setInfo('video', {
+            'mediatype': 'tvshow',
+            'title': episode['title'], 
+            'tvshowtitle': episode['tvshowtitle'],
+            'season': episode['season'],
+            'premiered': episode['premiered'],
+            'duration': episode['duration']
+           })
+
+        # Set 'IsPlayable' property to 'true'.
+        list_item.setProperty('IsPlayable', 'false')
+
+        # Create a URL for a plugin recursive call.
+        url = get_url(action='playvod', vod=episode['contentId'])
 
         # Add our item to the Kodi virtual folder listing.
         xbmcplugin.addDirectoryItem(_handle, url, list_item, False)
@@ -293,7 +429,7 @@ def router(paramstring):
     :type paramstring: str
     """
     params = dict(parse_qsl(paramstring))
-
+    xbmc.log("###PARAMSTRING###" +paramstring)
     if params:
         if params['action'] == 'play':
             play(params['channel'])
@@ -302,14 +438,18 @@ def router(paramstring):
         if params['action'] == 'menu':
             if params['menu_item'] == 'live':
                 list_channels()
-            if params['menu_item'] == 'favourites':
-                list_watchlater()
+            elif params['menu_item'] == 'favourites':
+                favourites_menu()
+            elif params['menu_item'] == 'favourites_watchlater':
+                    list_favourites_watchlater()
+            elif params['menu_item'] == 'favourites_series':
+                    list_favourites_series()
+            elif params['menu_item'] == 'favourites_series_list_episodes':
+                    list_serie(params['serietitle'])
         else:
             raise ValueError('Invalid paramstring: {0}!'.format(paramstring))
     else:
         main_menu()
-        #list_watchlater()
-        #list_channels()
 
 if __name__ == '__main__':
     # Check if user has configured its credentials
