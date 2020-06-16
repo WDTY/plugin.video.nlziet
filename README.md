@@ -1,4 +1,4 @@
-# notice, this addon is work in progress, favourites currently do not work, DRM/widevine implementation still in progress
+# notice, this addon is work in progress, favourites currently only list, playback do not work, DRM/widevine implementation still in progress
 
 # NLZIET plugin for Kodi
 This plugin is not officially supported by NLZIET.
